@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { formatAuthError } from "@/lib/auth/formatAuthError";
 import { loginSchema } from "@/lib/auth/loginSchema";
 import { requestPasswordResetSchema } from "@/lib/auth/resetPasswordSchema";
 import { createClient } from "@/lib/supabase/client";
@@ -59,7 +60,7 @@ export default function LoginPage() {
     if (error) {
       setGoogleLoading(false);
       setStatus("error");
-      setErrorMessage("Googleログインの開始に失敗しました");
+      setErrorMessage(formatAuthError(error));
       return;
     }
     // 成功時はブラウザがGoogleの認証画面へ遷移するため、ここでのstate更新は不要
@@ -85,7 +86,7 @@ export default function LoginPage() {
     setResetLoading(false);
 
     if (error) {
-      toast.error("パスワードリセットメールの送信に失敗しました");
+      toast.error(formatAuthError(error));
       return;
     }
     toast.success("パスワードリセット用のメールを送信しました。メールをご確認ください。");

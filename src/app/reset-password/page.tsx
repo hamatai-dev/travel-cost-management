@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatAuthError } from "@/lib/auth/formatAuthError";
 import { updatePasswordSchema } from "@/lib/auth/resetPasswordSchema";
 import { createClient } from "@/lib/supabase/client";
 
@@ -39,7 +40,7 @@ export default function ResetPasswordPage() {
     if (error) {
       setStatus("error");
       setErrorMessage(
-        "パスワードの更新に失敗しました。リンクの有効期限が切れている可能性があります。もう一度パスワードリセットをお試しください。",
+        `${formatAuthError(error)}(リンクの有効期限が切れている場合は、もう一度パスワードリセットをお試しください)`,
       );
       return;
     }

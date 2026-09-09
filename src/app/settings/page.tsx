@@ -4,6 +4,7 @@ import { Tag, Wallet, History, Download } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { exportTransactionsCsv } from "@/lib/transactions/supabaseExportTransactions";
@@ -46,6 +47,14 @@ export default function SettingsPage() {
   return (
     <main className="mx-auto flex max-w-md flex-col gap-3 p-4">
       <h1 className="text-xl font-semibold">設定</h1>
+
+      <Card>
+        <CardContent className="flex items-center justify-between py-4">
+          <span>テーマ</span>
+          <ThemeToggle />
+        </CardContent>
+      </Card>
+
       {ITEMS.map(({ href, label, icon: Icon }) => (
         <Link key={href} href={href}>
           <Card>

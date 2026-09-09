@@ -100,4 +100,20 @@ test.describe("設定(主要シナリオ)", () => {
     // Then
     await expect(page.getByRole("heading", { name: "支払い種別管理" })).toBeVisible();
   });
+
+  test("Given 設定ページを開く, When テーマをライトに切り替える, Then ダークモードのクラスが外れ再読み込み後も維持される", async ({
+    page,
+  }) => {
+    // Given: デフォルトはダークモード
+    await page.goto("/settings");
+    await expect(page.locator("html")).toHaveClass(/dark/);
+
+    // When
+    await page.getByRole("button", { name: "ライト" }).click();
+
+    // Then
+    await expect(page.locator("html")).not.toHaveClass(/dark/);
+    await page.reload();
+    await expect(page.locator("html")).not.toHaveClass(/dark/);
+  });
 });

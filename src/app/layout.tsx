@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppChrome } from "@/components/app-shell/app-chrome";
 import { RegisterServiceWorker } from "@/components/app-shell/register-service-worker";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,10 +34,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="ja"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <RegisterServiceWorker />
-        <AppChrome>{children}</AppChrome>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <RegisterServiceWorker />
+          <AppChrome>{children}</AppChrome>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -26,11 +25,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listSelectableCategories } from "@/lib/categories/supabaseCategories";
+import { truncateText } from "@/lib/format/truncateText";
 import { fetchJpyRate } from "@/lib/fx/fetchRate";
 import { persistResolvedAmounts } from "@/lib/fx/persistResolvedAmounts";
 import { resolveMissingAmountsJpy } from "@/lib/fx/resolveMissingAmountsJpy";
 import { createClient } from "@/lib/supabase/client";
 import type { TransactionFilters } from "@/lib/transactions/applyTransactionFilters";
+import { resolveMonthRange } from "@/lib/transactions/resolveMonthRange";
 import { fetchAccountNameMap } from "@/lib/transactions/supabaseTransactions";
 import {
   deleteTransactions,
@@ -46,6 +47,12 @@ const TYPE_LABEL: Record<TransactionType, string> = {
   income: "収入",
 };
 
+// 過去の旅程を振り返る用途が中心のため、少し過去〜現在+1年までを選べるようにする
+const CURRENT_YEAR = new Date().getFullYear();
+const CURRENT_MONTH = String(new Date().getMonth() + 1).padStart(2, "0");
+const YEARS = Array.from({ length: 6 }, (_, i) => String(CURRENT_YEAR + 1 - i));
+const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
+
 export default function TransactionsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -54,7 +61,14 @@ export default function TransactionsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<TransactionFilters>({});
+  // 初期表示は常に今月に絞り込んだ状態にする(旅の記録は直近の月を見返すことが
+  // 多いため、開いてすぐ今月分が見える方が便利)
+  const [filters, setFilters] = useState<TransactionFilters>(() => {
+    const { from, to } = resolveMonthRange(`${CURRENT_YEAR}-${CURRENT_MONTH}`);
+    return { dateFrom: from, dateTo: to };
+  });
+  const [selectedYear, setSelectedYear] = useState(String(CURRENT_YEAR));
+  const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH);
   const [searchInput, setSearchInput] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<TransactionListRow | null>(null);
@@ -148,6 +162,18 @@ export default function TransactionsPage() {
   function updateFilter(patch: Partial<TransactionFilters>) {
     setPage(1);
     setFilters((prev) => ({ ...prev, ...patch }));
+  }
+
+  function handleYearMonthChange(year: string, month: string) {
+    setSelectedYear(year);
+    setSelectedMonth(month);
+
+    if (year === ALL || month === ALL) {
+      updateFilter({ dateFrom: undefined, dateTo: undefined });
+      return;
+    }
+    const { from, to } = resolveMonthRange(`${year}-${month}`);
+    updateFilter({ dateFrom: from, dateTo: to });
   }
 
   async function handleBulkDelete() {
@@ -245,29 +271,50 @@ export default function TransactionsPage() {
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label htmlFor="dateFrom" className="mb-1.5">
-              期間(開始日)
-            </Label>
-            <Input
-              id="dateFrom"
-              type="date"
-              value={filters.dateFrom ?? ""}
-              onChange={(e) => updateFilter({ dateFrom: e.target.value || undefined })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="dateTo" className="mb-1.5">
-              期間(終了日)
-            </Label>
-            <Input
-              id="dateTo"
-              type="date"
-              value={filters.dateTo ?? ""}
-              onChange={(e) => updateFilter({ dateTo: e.target.value || undefined })}
-            />
-          </div>
+        <div className="flex gap-2">
+          <Select
+            value={selectedYear}
+            onValueChange={(v) => v && handleYearMonthChange(v, selectedMonth)}
+          >
+            <SelectTrigger className="flex-1 min-w-0">
+              <SelectValue placeholder="年">
+                {(v: string) => (v === ALL ? "すべての年" : `${v}年`)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>すべての年</SelectItem>
+              {YEARS.map((y) => (
+                <SelectItem key={y} value={y}>
+                  {y}年
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={selectedMonth}
+            onValueChange={(v) => v && handleYearMonthChange(selectedYear, v)}
+          >
+            <SelectTrigger className="flex-1 min-w-0">
+              <SelectValue placeholder="月">
+                {(v: string) => (v === ALL ? "すべての月" : `${Number(v)}月`)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>すべての月</SelectItem>
+              {MONTHS.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {Number(m)}月
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {(selectedYear !== ALL || selectedMonth !== ALL) && (
+            <Button type="button" variant="outline" onClick={() => handleYearMonthChange(ALL, ALL)}>
+              すべての期間
+            </Button>
+          )}
         </div>
       </div>
 
@@ -287,9 +334,12 @@ export default function TransactionsPage() {
             <TableRow>
               <TableHead className="w-8" />
               <TableHead>日付</TableHead>
+              <TableHead>種別</TableHead>
               <TableHead>店名</TableHead>
               <TableHead>カテゴリ</TableHead>
               <TableHead>支払い種別</TableHead>
+              <TableHead>国</TableHead>
+              <TableHead>メモ</TableHead>
               <TableHead className="text-right">金額</TableHead>
             </TableRow>
           </TableHeader>
@@ -297,7 +347,7 @@ export default function TransactionsPage() {
             {loading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={9}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
@@ -305,7 +355,7 @@ export default function TransactionsPage() {
 
             {!loading && rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
                   取引がありません
                 </TableCell>
               </TableRow>
@@ -332,6 +382,11 @@ export default function TransactionsPage() {
                     />
                   </TableCell>
                   <TableCell>{row.date}</TableCell>
+                  <TableCell>
+                    <Badge variant={row.transaction_type === "income" ? "default" : "outline"}>
+                      {TYPE_LABEL[row.transaction_type]}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="max-w-[160px] truncate">
                     {row.merchant || "-"}
                   </TableCell>
@@ -346,6 +401,10 @@ export default function TransactionsPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {accountNameById.get(row.account_id) ?? "-"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{row.country || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {row.memo ? truncateText(row.memo, 12) : "-"}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className={row.transaction_type === "income" ? "text-green-600" : undefined}>

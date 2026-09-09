@@ -1,12 +1,18 @@
 "use client";
 
+import { Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { SignOutButton } from "@/app/sign-out-button";
 import { EditTransactionDialog } from "@/components/transactions/edit-transaction-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -31,7 +37,10 @@ import { persistResolvedAmounts } from "@/lib/fx/persistResolvedAmounts";
 import { resolveMissingAmountsJpy } from "@/lib/fx/resolveMissingAmountsJpy";
 import { createClient } from "@/lib/supabase/client";
 import type { TransactionFilters } from "@/lib/transactions/applyTransactionFilters";
+import { buildTransactionsCsv } from "@/lib/transactions/buildTransactionsCsv";
+import { buildTransactionsPrintHtml } from "@/lib/transactions/buildTransactionsPrintHtml";
 import { resolveMonthRange } from "@/lib/transactions/resolveMonthRange";
+import { fetchExportableTransactions } from "@/lib/transactions/supabaseExportTransactions";
 import { fetchAccountNameMap } from "@/lib/transactions/supabaseTransactions";
 import {
   deleteTransactions,
@@ -73,9 +82,15 @@ export default function TransactionsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<TransactionListRow | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
   const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
+  // 「種別」フィルタで支出/収入を選んでいる間は、カテゴリの選択肢もその種別
+  // (+ 支出・収入共通の'both')だけに絞る
+  const categoryOptions = filters.transactionType
+    ? categories.filter((c) => c.kind === filters.transactionType || c.kind === "both")
+    : categories;
 
   function refresh() {
     setRefreshKey((k) => k + 1);
@@ -176,6 +191,65 @@ export default function TransactionsPage() {
     updateFilter({ dateFrom: from, dateTo: to });
   }
 
+  const periodLabel =
+    selectedYear === ALL || selectedMonth === ALL
+      ? "全期間"
+      : `${selectedYear}年${Number(selectedMonth)}月`;
+
+  async function handleExportCsv() {
+    if (!userId) {
+      toast.error("読み込み中です。少し待ってからもう一度お試しください");
+      return;
+    }
+    setExporting(true);
+    try {
+      const supabase = createClient();
+      const exportRows = await fetchExportableTransactions(supabase, userId, filters);
+      const csv = buildTransactionsCsv(exportRows);
+      // 先頭にBOMを付けてExcelでも文字化けせずに開けるようにする
+      const BOM = "\uFEFF";
+      const blob = new Blob([BOM + csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `transactions-${periodLabel}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("CSVをエクスポートしました");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "エクスポートに失敗しました");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleExportPdf() {
+    if (!userId) {
+      toast.error("読み込み中です。少し待ってからもう一度お試しください");
+      return;
+    }
+    setExporting(true);
+    try {
+      const supabase = createClient();
+      const exportRows = await fetchExportableTransactions(supabase, userId, filters);
+      const html = buildTransactionsPrintHtml(exportRows, periodLabel);
+      // jsPDF等は日本語フォントを別途埋め込まないと文字化けするため、
+      // ブラウザ自身の印刷機能(「PDFとして保存」)でPDF化してもらう方式にしている。
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error("ポップアップがブロックされました。ブラウザの設定を確認してください");
+        return;
+      }
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.onload = () => printWindow.print();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "エクスポートに失敗しました");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function handleBulkDelete() {
     if (selectedIds.size === 0) return;
     if (!confirm(`${selectedIds.size}件の取引を削除します。よろしいですか?`)) return;
@@ -202,7 +276,20 @@ export default function TransactionsPage() {
               {selectedIds.size}件削除
             </Button>
           )}
-          <SignOutButton />
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" size="sm" disabled={exporting} />}>
+              <Download className="size-4" />
+              {exporting ? "エクスポート中..." : "エクスポート"}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={handleExportCsv}>
+                CSVでエクスポート({periodLabel})
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPdf}>
+                PDFでエクスポート({periodLabel})
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -213,6 +300,9 @@ export default function TransactionsPage() {
             onValueChange={(v) =>
               updateFilter({
                 transactionType: !v || v === ALL ? undefined : (v as TransactionType),
+                // 種別を切り替えたら、その種別では選べないカテゴリが選択されたままに
+                // ならないようリセットする
+                categoryId: undefined,
               })
             }
           >
@@ -262,7 +352,7 @@ export default function TransactionsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>すべてのカテゴリ</SelectItem>
-              {categories.map((c) => (
+              {categoryOptions.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   {c.name}
                 </SelectItem>
@@ -319,7 +409,7 @@ export default function TransactionsPage() {
       </div>
 
       <Input
-        placeholder="店名・メモで検索"
+        placeholder="支払い先・メモで検索"
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
         onKeyDown={(e) => {
@@ -335,7 +425,7 @@ export default function TransactionsPage() {
               <TableHead className="w-8" />
               <TableHead>日付</TableHead>
               <TableHead>種別</TableHead>
-              <TableHead>店名</TableHead>
+              <TableHead>支払い先</TableHead>
               <TableHead>カテゴリ</TableHead>
               <TableHead>支払い種別</TableHead>
               <TableHead>国</TableHead>

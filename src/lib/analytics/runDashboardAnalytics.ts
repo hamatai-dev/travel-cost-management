@@ -20,7 +20,7 @@ import {
   computeCountryDailyAverages,
   type CountryDailyAverage,
 } from "./countryDailyAverage";
-import type { DateRange } from "./dateRangePresets";
+import type { DateRange } from "./dateRange";
 import { computeMonthlyCashFlow, type MonthlyCashFlow } from "./monthlyCashFlow";
 
 export interface DashboardData {

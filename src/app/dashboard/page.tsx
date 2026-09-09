@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PieChart } from "@/components/pie-chart";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -18,10 +19,7 @@ import {
 } from "@/components/ui/tabs";
 import type { AggregationResult, Total } from "@/lib/analytics/aggregate";
 import type { CountryDailyAverage } from "@/lib/analytics/countryDailyAverage";
-import {
-  resolveDateRangePreset,
-  type DateRangePreset,
-} from "@/lib/analytics/dateRangePresets";
+import type { DateRange } from "@/lib/analytics/dateRange";
 import type { MonthlyCashFlow } from "@/lib/analytics/monthlyCashFlow";
 import type { PeriodComparisons } from "@/lib/analytics/periodComparison";
 import {
@@ -31,7 +29,18 @@ import {
 import { runPeriodComparisons } from "@/lib/analytics/runPeriodComparisons";
 import { runCurrencyTrend, type CurrencyTrendResult } from "@/lib/fx/runCurrencyTrend";
 import { createClient } from "@/lib/supabase/client";
+import { resolveMonthRange } from "@/lib/transactions/resolveMonthRange";
 import { cn } from "@/lib/utils";
+
+const ALL = "__all__";
+const CURRENT_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: 6 }, (_, i) => String(CURRENT_YEAR + 1 - i));
+const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
+
+function resolveSelectedDateRange(year: string, month: string): DateRange {
+  if (year === ALL || month === ALL) return {};
+  return resolveMonthRange(`${year}-${month}`);
+}
 
 function formatChangeRate(rate: number | null): string {
   if (rate == null) return "比較データなし";
@@ -50,13 +59,6 @@ type State =
   | { step: "loading" }
   | { step: "ready"; data: DashboardData }
   | { step: "error"; message: string };
-
-const PERIOD_LABEL: Record<DateRangePreset, string> = {
-  this_week: "今週",
-  this_month: "今月",
-  last_month: "先月",
-  all: "全期間",
-};
 
 function BarList({ result }: { result: AggregationResult }) {
   const max = Math.max(1, ...result.totals.map((t) => t.totalJpy));
@@ -144,10 +146,13 @@ function MonthlyCashFlowList({ items }: { items: MonthlyCashFlow[] }) {
 
 export default function DashboardPage() {
   const [state, setState] = useState<State>({ step: "loading" });
-  const [period, setPeriod] = useState<DateRangePreset>("all");
+  const [selectedYear, setSelectedYear] = useState(ALL);
+  const [selectedMonth, setSelectedMonth] = useState(ALL);
   const [userId, setUserId] = useState<string | null>(null);
   const [comparisons, setComparisons] = useState<PeriodComparisons | null>(null);
   const [currencyTrend, setCurrencyTrend] = useState<CurrencyTrendResult | null>(null);
+  // 選択中の期間フィルタに関係なく、これまでの全取引から計算する「現在の総残高」。
+  const [totalBalanceJpy, setTotalBalanceJpy] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,7 +168,7 @@ export default function DashboardPage() {
       }
       setUserId(uid);
       try {
-        const dateRange = resolveDateRangePreset(period);
+        const dateRange = resolveSelectedDateRange(selectedYear, selectedMonth);
         const result = await runDashboardAnalytics(supabase, uid, dateRange);
         if (cancelled) return;
 
@@ -179,11 +184,11 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [period]);
+  }, [selectedYear, selectedMonth]);
 
   useEffect(() => {
-    // 先月比・先週比・為替トレンドは選択中の期間フィルタとは独立な「一言サマリー」
-    // なので、userId が確定した時点で一度だけ取得する(period切り替えでは再取得しない)。
+    // 先月比・先週比・為替トレンド・現在の総残高は選択中の期間フィルタとは独立
+    // (常に直近/全期間を見る)なので、userId が確定した時点で一度だけ取得する。
     if (!userId) return;
     let cancelled = false;
     const supabase = createClient();
@@ -200,31 +205,75 @@ export default function DashboardPage() {
         // 滞在国・レートが特定できない場合も同様に静かに非表示のままにする
       });
 
+    runDashboardAnalytics(supabase, userId, {})
+      .then((result) => !cancelled && setTotalBalanceJpy(result.netJpy))
+      .catch(() => {
+        // 取れなくても円グラフ側は選択中期間の内訳として動くので静かに諦める
+      });
+
     return () => {
       cancelled = true;
     };
   }, [userId]);
 
+  function handleYearMonthChange(year: string, month: string) {
+    setSelectedYear(year);
+    setSelectedMonth(month);
+  }
+
+  const periodLabel =
+    selectedYear === ALL || selectedMonth === ALL
+      ? "全期間"
+      : `${selectedYear}年${Number(selectedMonth)}月`;
+
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">ダッシュボード</h1>
-        <Select value={period} onValueChange={(v) => v && setPeriod(v as DateRangePreset)}>
-          <SelectTrigger className="w-28">
-            <SelectValue>{PERIOD_LABEL[period]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="this_week">今週</SelectItem>
-            <SelectItem value="this_month">今月</SelectItem>
-            <SelectItem value="last_month">先月</SelectItem>
-            <SelectItem value="all">全期間</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Select
+            value={selectedYear}
+            onValueChange={(v) => v && handleYearMonthChange(v, selectedMonth)}
+          >
+            <SelectTrigger className="w-24">
+              <SelectValue placeholder="年">
+                {(v: string) => (v === ALL ? "全年" : `${v}年`)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>全年</SelectItem>
+              {YEARS.map((y) => (
+                <SelectItem key={y} value={y}>
+                  {y}年
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={selectedMonth}
+            onValueChange={(v) => v && handleYearMonthChange(selectedYear, v)}
+          >
+            <SelectTrigger className="w-20">
+              <SelectValue placeholder="月">
+                {(v: string) => (v === ALL ? "全月" : `${Number(v)}月`)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>全月</SelectItem>
+              {MONTHS.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {Number(m)}月
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {state.step === "loading" && (
         <div className="space-y-4">
-          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-48 w-full" />
           <Skeleton className="h-32 w-full" />
         </div>
       )}
@@ -235,12 +284,60 @@ export default function DashboardPage() {
         <>
           <Card>
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">
-                合計支出({state.data.transactionCount}件)
-              </p>
-              <p className="text-3xl font-semibold">
-                ¥{state.data.totalJpy.toLocaleString()}
-              </p>
+              <p className="text-sm text-muted-foreground">現在の総残高(全期間の収支)</p>
+              {totalBalanceJpy != null ? (
+                <p
+                  className={cn(
+                    "text-3xl font-semibold",
+                    totalBalanceJpy < 0 ? "text-red-600" : undefined,
+                  )}
+                >
+                  {totalBalanceJpy >= 0 ? "" : "-"}¥{Math.abs(totalBalanceJpy).toLocaleString()}
+                </p>
+              ) : (
+                <Skeleton className="mt-1 h-9 w-40" />
+              )}
+
+              <div className="mt-4 flex items-center gap-4">
+                <PieChart
+                  data={[
+                    { label: "支出", value: state.data.totalJpy, colorClass: "fill-red-500" },
+                    {
+                      label: "収入",
+                      value: state.data.totalIncomeJpy,
+                      colorClass: "fill-green-500",
+                    },
+                  ]}
+                />
+                <ul className="flex-1 space-y-2 text-sm">
+                  <li className="flex items-center gap-2">
+                    <span className="size-2.5 shrink-0 rounded-full bg-red-500" />
+                    <span className="flex-1">
+                      支出({state.data.transactionCount}件)
+                    </span>
+                    <span className="font-medium">¥{state.data.totalJpy.toLocaleString()}</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="size-2.5 shrink-0 rounded-full bg-green-500" />
+                    <span className="flex-1">収入</span>
+                    <span className="font-medium">
+                      ¥{state.data.totalIncomeJpy.toLocaleString()}
+                    </span>
+                  </li>
+                </ul>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                <span>{periodLabel}の内訳</span>
+                <span
+                  className={cn(
+                    "font-medium",
+                    state.data.netJpy < 0 ? "text-red-600" : "text-green-600",
+                  )}
+                >
+                  収支 {state.data.netJpy >= 0 ? "+" : ""}¥{state.data.netJpy.toLocaleString()}
+                </span>
+              </div>
+
               {state.data.fixedCostJpy > 0 && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   うち固定費 ¥{state.data.fixedCostJpy.toLocaleString()} ・ 旅の変動費 ¥
@@ -252,19 +349,6 @@ export default function DashboardPage() {
                   ※ {state.data.excludedCount}件は為替レート未取得のため合計に含まれていません
                 </p>
               )}
-              <div className="mt-4 flex justify-between border-t pt-3 text-sm">
-                <span className="text-muted-foreground">
-                  収入 ¥{state.data.totalIncomeJpy.toLocaleString()}
-                </span>
-                <span
-                  className={cn(
-                    "font-medium",
-                    state.data.netJpy < 0 ? "text-red-600" : "text-green-600",
-                  )}
-                >
-                  収支 {state.data.netJpy >= 0 ? "+" : ""}¥{state.data.netJpy.toLocaleString()}
-                </span>
-              </div>
             </CardContent>
           </Card>
 

@@ -18,36 +18,36 @@ export function ThemeToggle() {
   }, []);
 
   if (!mounted) {
-    return <div className="h-8 w-[104px] rounded-lg bg-muted" />;
+    return <div className="h-8 w-16 rounded-lg bg-muted" />;
   }
 
   return (
     <div className="flex gap-1 rounded-lg bg-muted p-1">
       <button
         type="button"
+        aria-label="ライト"
         aria-pressed={theme === "light"}
         onClick={() => setTheme("light")}
         className={cn(
-          "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition-colors",
+          "flex items-center justify-center rounded-md p-1.5 transition-colors",
           theme === "light"
             ? "bg-background text-foreground shadow-sm"
             : "text-muted-foreground",
         )}
       >
         <Sun className="size-4" />
-        ライト
       </button>
       <button
         type="button"
+        aria-label="ダーク"
         aria-pressed={theme === "dark"}
         onClick={() => setTheme("dark")}
         className={cn(
-          "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition-colors",
+          "flex items-center justify-center rounded-md p-1.5 transition-colors",
           theme === "dark" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
         )}
       >
         <Moon className="size-4" />
-        ダーク
       </button>
     </div>
   );

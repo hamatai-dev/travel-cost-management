@@ -18,60 +18,52 @@ test.describe("ダッシュボード(主要シナリオ)", () => {
     expect(response.ok()).toBe(true);
   });
 
-  test("Given これまでの取引データがある, When ダッシュボードを開く, Then 合計支出とカテゴリ別内訳が表示される", async ({
+  test("Given これまでの取引データがある, When ダッシュボードを開く, Then 総残高・円グラフとカテゴリ別内訳が表示される", async ({
     page,
   }) => {
     // Given / When
     await page.goto("/dashboard");
 
     // Then: 為替レート解決を挟むため少し余裕を持って待つ
-    await expect(page.getByText(/合計支出/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/現在の総残高/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("img", { name: "支出と収入の内訳円グラフ" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "カテゴリ" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "支払い種別" })).toBeVisible();
   });
 
-  test("Given これまでの取引データがある(収入含む), When ダッシュボードを開く, Then 収支サマリーと収入タブが表示される", async ({
+  test("Given これまでの取引データがある(収入含む), When ダッシュボードを開く, Then 収支と収入タブが表示される", async ({
     page,
   }) => {
     // Given / When
     await page.goto("/dashboard");
-    await expect(page.getByText(/合計支出/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/現在の総残高/)).toBeVisible({ timeout: 15000 });
 
     // Then
-    await expect(page.getByText(/収支/)).toBeVisible();
+    await expect(page.getByText(/収支 [+¥-]/)).toBeVisible();
     await page.getByRole("tab", { name: "収入" }).click();
     await expect(page.getByRole("tabpanel", { name: "収入" })).toBeVisible();
   });
 
-  test("Given ダッシュボードを開く, When 期間を「今月」に切り替える, Then 表示が更新される", async ({
+  test("Given ダッシュボードを開く, When 年・月を指定して絞り込む, Then 選択した年月の内訳表示に更新される", async ({
     page,
   }) => {
     // Given
     await page.goto("/dashboard");
-    await expect(page.getByText(/合計支出/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/現在の総残高/)).toBeVisible({ timeout: 15000 });
+    // combobox の並びは [0]年 [1]月
+    const yearSelect = page.getByRole("combobox").nth(0);
+    const monthSelect = page.getByRole("combobox").nth(1);
 
     // When
-    await page.getByRole("combobox").click();
-    await page.getByRole("option", { name: "今月" }).click();
+    await yearSelect.click();
+    await page.getByRole("option", { name: "2026年" }).click();
+    await monthSelect.click();
+    await page.getByRole("option", { name: "6月" }).click();
 
-    // Then: 期間切り替え後も合計支出は表示される
-    await expect(page.getByText(/合計支出/)).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole("combobox")).toContainText("今月");
-  });
-
-  test("Given ダッシュボードを開く, When 期間を「今週」に切り替える, Then 週次の表示に更新される", async ({
-    page,
-  }) => {
-    // Given
-    await page.goto("/dashboard");
-    await expect(page.getByText(/合計支出/)).toBeVisible({ timeout: 15000 });
-
-    // When
-    await page.getByRole("combobox").click();
-    await page.getByRole("option", { name: "今週" }).click();
-
-    // Then
-    await expect(page.getByText(/合計支出/)).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole("combobox")).toContainText("今週");
+    // Then: 期間切り替え後も総残高・内訳は表示され、選択した年月が反映される
+    await expect(page.getByText(/現在の総残高/)).toBeVisible({ timeout: 15000 });
+    await expect(yearSelect).toContainText("2026年");
+    await expect(monthSelect).toContainText("6月");
+    await expect(page.getByText("2026年6月の内訳")).toBeVisible();
   });
 });

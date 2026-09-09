@@ -60,6 +60,48 @@ create policy "categories_delete_own" on public.categories
   for delete using (auth.uid() = user_id);
 
 -- ==========================================
+-- category_hidden_for_user / category_sort_order_for_user:
+-- カテゴリに対するユーザーごとの見た目の好み(非表示・並び順)。
+-- デフォルトカテゴリ(user_id is null)は共有マスタなので直接削除・並び替えできない
+-- 代わりに、ユーザーごとに「自分の一覧からは隠す」「この順番で表示する」を
+-- 上書きできるようにする。自作カテゴリにも同じ仕組みを使う。
+-- ==========================================
+create table public.category_hidden_for_user (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  category_id uuid not null references public.categories(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, category_id)
+);
+
+alter table public.category_hidden_for_user enable row level security;
+
+create policy "category_hidden_for_user_select_own" on public.category_hidden_for_user
+  for select using (auth.uid() = user_id);
+create policy "category_hidden_for_user_insert_own" on public.category_hidden_for_user
+  for insert with check (auth.uid() = user_id);
+create policy "category_hidden_for_user_delete_own" on public.category_hidden_for_user
+  for delete using (auth.uid() = user_id);
+
+create table public.category_sort_order_for_user (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  category_id uuid not null references public.categories(id) on delete cascade,
+  sort_order integer not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, category_id)
+);
+
+alter table public.category_sort_order_for_user enable row level security;
+
+create policy "category_sort_order_for_user_select_own" on public.category_sort_order_for_user
+  for select using (auth.uid() = user_id);
+create policy "category_sort_order_for_user_insert_own" on public.category_sort_order_for_user
+  for insert with check (auth.uid() = user_id);
+create policy "category_sort_order_for_user_update_own" on public.category_sort_order_for_user
+  for update using (auth.uid() = user_id);
+create policy "category_sort_order_for_user_delete_own" on public.category_sort_order_for_user
+  for delete using (auth.uid() = user_id);
+
+-- ==========================================
 -- transactions: 支出の共通スキーマ(手入力・CSVインポート・現金入力すべてここに正規化)
 -- ==========================================
 create table public.transactions (
@@ -152,6 +194,7 @@ insert into public.categories (user_id, name, is_default, kind) values
   (null, '交通', true, 'expense'),
   (null, '宿泊', true, 'expense'),
   (null, '娯楽', true, 'expense'),
+  (null, '観光・ツアー', true, 'expense'),
   (null, '通信', true, 'expense'),
   (null, '日用品', true, 'expense'),
   (null, 'その他', true, 'expense'),

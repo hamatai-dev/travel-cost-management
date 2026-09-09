@@ -20,6 +20,7 @@ import { NumericKeypad } from "@/components/numeric-keypad";
 import { SuggestionChips } from "@/components/suggestion-chips";
 import { inferCategoryFromMerchant } from "@/lib/categories/inferCategory";
 import { listSelectableCategories } from "@/lib/categories/supabaseCategories";
+import { COMMON_CURRENCIES } from "@/lib/currency/commonCurrencies";
 import {
   enqueueCashTransaction,
   listAllLocalTransactions,
@@ -41,7 +42,6 @@ interface CashEntryFormProps {
   transactionType: TransactionType;
   categories: Category[];
   frequentMerchants: string[];
-  frequentCurrencies: string[];
   frequentCountries: string[];
   onSubmitted: (tx: ReturnType<typeof buildCashTransaction>) => Promise<void>;
 }
@@ -53,7 +53,6 @@ function CashEntryForm({
   transactionType,
   categories,
   frequentMerchants,
-  frequentCurrencies,
   frequentCountries,
   onSubmitted,
 }: CashEntryFormProps) {
@@ -119,7 +118,7 @@ function CashEntryForm({
     setMemo("");
   }
 
-  const merchantLabel = transactionType === "income" ? "収入元(任意)" : "店名(任意)";
+  const merchantLabel = transactionType === "income" ? "収入元(任意)" : "支払い先(任意)";
   const merchantFieldId = `merchant-${transactionType}`;
   const categoryFieldId = `categoryName-${transactionType}`;
 
@@ -141,26 +140,26 @@ function CashEntryForm({
             onChange={(e) => setAmount(e.target.value)}
           />
         </div>
-        <div className="w-24">
+        <div className="w-32">
           <Label htmlFor={`currency-${transactionType}`} className="mb-1.5">
             通貨
           </Label>
-          <Input
-            id={`currency-${transactionType}`}
-            required
-            maxLength={3}
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            className="uppercase"
-          />
+          <Select value={currency} onValueChange={(v) => v && setCurrency(v)}>
+            <SelectTrigger id={`currency-${transactionType}`} className="w-full">
+              <SelectValue placeholder="通貨">{(v: string) => v}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {COMMON_CURRENCIES.map((c) => (
+                <SelectItem key={c.code} value={c.code}>
+                  {c.code}({c.label})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       {/* テンキー風の金額入力。素早くタップで金額を組み立てられ、OSキーボードでの直接入力も引き続き使える */}
       <NumericKeypad onKey={(key) => setAmount((prev) => appendKeypadDigit(prev, key))} />
-      <SuggestionChips
-        values={frequentCurrencies.filter((c) => c !== currency)}
-        onSelect={setCurrency}
-      />
 
       <div>
         <Label htmlFor={`country-${transactionType}`} className="mb-1.5">
@@ -236,7 +235,6 @@ export default function CashEntryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [frequentMerchants, setFrequentMerchants] = useState<string[]>([]);
-  const [frequentCurrencies, setFrequentCurrencies] = useState<string[]>([]);
   const [frequentCountries, setFrequentCountries] = useState<string[]>([]);
 
   const localTransactions = useLiveQuery(
@@ -278,13 +276,11 @@ export default function CashEntryPage() {
 
         Promise.all([
           fetchFrequentValues(supabase, id, "merchant"),
-          fetchFrequentValues(supabase, id, "currency_original"),
           fetchFrequentValues(supabase, id, "country"),
         ])
-          .then(([merchants, currencies, countries]) => {
+          .then(([merchants, countries]) => {
             if (cancelled) return;
             setFrequentMerchants(merchants);
-            setFrequentCurrencies(currencies);
             setFrequentCountries(countries);
           })
           .catch(() => {
@@ -333,7 +329,6 @@ export default function CashEntryPage() {
                 transactionType="expense"
                 categories={categories}
                 frequentMerchants={frequentMerchants}
-                frequentCurrencies={frequentCurrencies}
                 frequentCountries={frequentCountries}
                 onSubmitted={handleSubmitted}
               />
@@ -343,7 +338,6 @@ export default function CashEntryPage() {
                 transactionType="income"
                 categories={categories}
                 frequentMerchants={frequentMerchants}
-                frequentCurrencies={frequentCurrencies}
                 frequentCountries={frequentCountries}
                 onSubmitted={handleSubmitted}
               />

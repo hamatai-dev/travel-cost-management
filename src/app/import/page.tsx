@@ -107,7 +107,7 @@ export default function ImportPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>日付</TableHead>
-                    <TableHead>店名</TableHead>
+                    <TableHead>支払い先</TableHead>
                     <TableHead>金額</TableHead>
                     <TableHead>カテゴリ</TableHead>
                   </TableRow>

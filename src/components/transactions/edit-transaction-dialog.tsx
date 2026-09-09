@@ -176,7 +176,7 @@ function EditTransactionForm({
         </div>
 
         <div>
-          <Label htmlFor="edit-merchant">店名</Label>
+          <Label htmlFor="edit-merchant">支払い先</Label>
           <Input
             id="edit-merchant"
             value={merchant}

@@ -22,7 +22,7 @@ const TYPE_LABEL: Record<TransactionType, string> = {
 const HEADER = [
   "日付",
   "種別",
-  "店名",
+  "支払い先",
   "金額",
   "通貨",
   "円換算",

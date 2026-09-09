@@ -29,7 +29,7 @@ test.describe("現金支出の記録(主要シナリオ)", () => {
 
     // When
     await page.getByLabel("金額").fill("500");
-    await page.getByLabel("店名(任意)").fill(merchantName);
+    await page.getByLabel("支払い先(任意)").fill(merchantName);
     await page.getByRole("button", { name: "記録する" }).click();
 
     // Then: オフラインでも成立する保存(ローカルDB反映)がまず確認できること
@@ -70,7 +70,7 @@ test.describe("現金支出の記録(主要シナリオ)", () => {
     await page.getByRole("button", { name: "2", exact: true }).click();
     await page.getByRole("button", { name: "3", exact: true }).click();
     await expect(page.getByLabel("金額")).toHaveValue("123");
-    await page.getByLabel("店名(任意)").fill(merchantName);
+    await page.getByLabel("支払い先(任意)").fill(merchantName);
     await page.getByRole("button", { name: "記録する" }).click();
 
     // Then

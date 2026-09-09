@@ -24,14 +24,14 @@ test.describe("取引一覧・編集(主要シナリオ)", () => {
     // Given: 一覧に載せる取引を1件、現金入力で作っておく
     await page.goto("/entry");
     await page.getByLabel("金額").fill("321");
-    await page.getByLabel("店名(任意)").fill(merchantName);
+    await page.getByLabel("支払い先(任意)").fill(merchantName);
     await page.getByRole("button", { name: "記録する" }).click();
     await expect(page.getByText("保存しました")).toBeVisible();
     await page.waitForTimeout(3000); // オンライン自動同期を待つ
 
     // When: 一覧で検索してヒットさせ、編集ダイアログを開いてメモを保存する
     await page.goto("/");
-    const searchBox = page.getByPlaceholder("店名・メモで検索");
+    const searchBox = page.getByPlaceholder("支払い先・メモで検索");
     await searchBox.fill(merchantName);
     await searchBox.press("Enter");
     await expect(page.getByText(merchantName)).toBeVisible({ timeout: 10000 });
@@ -60,5 +60,28 @@ test.describe("取引一覧・編集(主要シナリオ)", () => {
     // Then: UUID(ハイフン区切りの16進数)ではなく名前が表示される
     await expect(accountSelect).toContainText("楽天カード");
     await expect(accountSelect).not.toHaveText(/[0-9a-f]{8}-[0-9a-f]{4}-/);
+  });
+
+  test("Given 取引一覧を開く, When CSVでエクスポートを選ぶ, Then 表示中の期間のCSVファイルがダウンロードされる", async ({
+    page,
+  }) => {
+    // Given: ユーザー情報の取得(非同期)が終わってから操作する。
+    // ページ自体はログイン確認前から描画されるため、単に要素が見えるだけでは
+    // まだ早すぎることがある。
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: "エクスポート" }).click();
+
+    // When
+    const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
+    await page.getByRole("menuitem", { name: /CSVでエクスポート/ }).click();
+
+    // Then: blob URLのダウンロードイベントを拾えない環境もあるため、
+    // 完了トーストを主なアサーションにしつつダウンロード自体もベストエフォートで確認する
+    await expect(page.getByText("CSVをエクスポートしました")).toBeVisible({ timeout: 15000 });
+    const download = await downloadPromise.catch(() => null);
+    if (download) {
+      expect(download.suggestedFilename()).toMatch(/\.csv$/);
+    }
   });
 });

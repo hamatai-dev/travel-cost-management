@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { Toaster } from "@/components/ui/sonner";
 import { BottomNav } from "./bottom-nav";
 
-const NO_CHROME_PATHS = ["/login"];
+const NO_CHROME_PATHS = ["/login", "/reset-password"];
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// E2Eテスト専用のログインAPI。UIはメールのマジックリンクのみ提供しているため、
-// Playwrightから毎回メール受信を待つのは非現実的。あらかじめ用意したテスト用
-// アカウント(email/password)でセッションCookieを発行するための抜け道。
+// E2Eテスト専用のログインAPI。UIのメール+パスワードログインをPlaywrightの
+// UI操作で毎回通すこともできるが、Google OAuthを含む画面遷移を避けて
+// あらかじめ用意したテスト用アカウント(email/password)でセッションCookieを
+// 直接発行するための抜け道として残している。
 // 本番ビルド(NODE_ENV=production)では常に404を返し、機能しない。
 export async function POST(request: Request) {
   if (process.env.NODE_ENV === "production") {

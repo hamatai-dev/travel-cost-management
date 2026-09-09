@@ -40,7 +40,7 @@ test.describe("ダッシュボード(主要シナリオ)", () => {
     // Then
     await expect(page.getByText(/収支/)).toBeVisible();
     await page.getByRole("tab", { name: "収入" }).click();
-    await expect(page.getByRole("tabpanel")).toBeVisible();
+    await expect(page.getByRole("tabpanel", { name: "収入" })).toBeVisible();
   });
 
   test("Given ダッシュボードを開く, When 期間を「今月」に切り替える, Then 表示が更新される", async ({

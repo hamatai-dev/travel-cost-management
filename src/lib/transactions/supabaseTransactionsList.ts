@@ -85,6 +85,19 @@ export async function updateTransaction(
   if (error) throw new Error(`取引の更新に失敗しました: ${error.message}`);
 }
 
+export async function updateTransactionCategory(
+  supabase: SupabaseClient,
+  id: string,
+  categoryId: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from("transactions")
+    .update({ category_id: categoryId })
+    .eq("id", id);
+
+  if (error) throw new Error(`カテゴリの更新に失敗しました: ${error.message}`);
+}
+
 export async function deleteTransactions(
   supabase: SupabaseClient,
   ids: string[],

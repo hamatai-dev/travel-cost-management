@@ -46,11 +46,13 @@ import {
   deleteTransactions,
   fetchTransactionsPage,
   type TransactionListRow,
+  updateTransactionCategory,
 } from "@/lib/transactions/supabaseTransactionsList";
 import type { Category, TransactionType } from "@/types/transaction";
 
 const PAGE_SIZE = 20;
 const ALL = "__all__";
+const UNCATEGORIZED = "__uncategorized__";
 const TYPE_LABEL: Record<TransactionType, string> = {
   expense: "支出",
   income: "収入",
@@ -261,6 +263,24 @@ export default function TransactionsPage() {
       refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "削除に失敗しました");
+    }
+  }
+
+  async function handleCategoryChange(row: TransactionListRow, categoryId: string | null) {
+    if (row.category_id === categoryId) return;
+    const prevCategoryId = row.category_id;
+    // 一覧上で即座に反映されるよう楽観的更新し、失敗時は元に戻す
+    setRows((prev) =>
+      prev.map((r) => (r.id === row.id ? { ...r, category_id: categoryId } : r)),
+    );
+    try {
+      const supabase = createClient();
+      await updateTransactionCategory(supabase, row.id, categoryId);
+    } catch (err) {
+      setRows((prev) =>
+        prev.map((r) => (r.id === row.id ? { ...r, category_id: prevCategoryId } : r)),
+      );
+      toast.error(err instanceof Error ? err.message : "カテゴリの更新に失敗しました");
     }
   }
 
@@ -509,14 +529,39 @@ export default function TransactionsPage() {
                   <TableCell className="max-w-[160px] truncate lg:max-w-[280px]">
                     {row.merchant || "-"}
                   </TableCell>
-                  <TableCell>
-                    {row.category_id ? (
-                      <Badge variant="secondary">
-                        {categoryNameById.get(row.category_id) ?? "-"}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">未分類</Badge>
-                    )}
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Select
+                      value={row.category_id ?? UNCATEGORIZED}
+                      onValueChange={(v) =>
+                        handleCategoryChange(row, v === UNCATEGORIZED ? null : v)
+                      }
+                    >
+                      <SelectTrigger size="sm" className="w-fit min-w-0 border-none px-0">
+                        <SelectValue placeholder="カテゴリ">
+                          {(v: string) =>
+                            v === UNCATEGORIZED ? (
+                              <Badge variant="outline">未分類</Badge>
+                            ) : (
+                              <Badge variant="secondary">
+                                {categoryNameById.get(v) ?? "-"}
+                              </Badge>
+                            )
+                          }
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={UNCATEGORIZED}>未分類</SelectItem>
+                        {categories
+                          .filter(
+                            (c) => c.kind === row.transaction_type || c.kind === "both",
+                          )
+                          .map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {accountNameById.get(row.account_id) ?? "-"}

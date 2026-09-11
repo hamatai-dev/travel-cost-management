@@ -266,8 +266,35 @@ export default function TransactionsPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
+  const pagination = (
+    <div className="flex items-center justify-between text-sm text-muted-foreground">
+      <span>
+        {totalCount}件中 {rows.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}〜
+        {(page - 1) * PAGE_SIZE + rows.length}件
+      </span>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page <= 1}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          前へ
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page >= totalPages}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          次へ
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-4">
+    <main className="mx-auto w-full max-w-3xl space-y-4 p-4 lg:max-w-6xl 2xl:max-w-7xl">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">取引一覧</h1>
         <div className="flex items-center gap-2">
@@ -418,6 +445,8 @@ export default function TransactionsPage() {
         onBlur={() => updateFilter({ search: searchInput || undefined })}
       />
 
+      {pagination}
+
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
@@ -477,7 +506,7 @@ export default function TransactionsPage() {
                       {TYPE_LABEL[row.transaction_type]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="max-w-[160px] truncate">
+                  <TableCell className="max-w-[160px] truncate lg:max-w-[280px]">
                     {row.merchant || "-"}
                   </TableCell>
                   <TableCell>
@@ -513,30 +542,7 @@ export default function TransactionsPage() {
         </Table>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>
-          {totalCount}件中 {rows.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}〜
-          {(page - 1) * PAGE_SIZE + rows.length}件
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            前へ
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            次へ
-          </Button>
-        </div>
-      </div>
+      {pagination}
 
       <EditTransactionDialog
         transaction={editing}

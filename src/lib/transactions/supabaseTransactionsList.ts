@@ -98,6 +98,19 @@ export async function updateTransactionCategory(
   if (error) throw new Error(`カテゴリの更新に失敗しました: ${error.message}`);
 }
 
+export async function updateTransactionCountry(
+  supabase: SupabaseClient,
+  id: string,
+  country: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from("transactions")
+    .update({ country })
+    .eq("id", id);
+
+  if (error) throw new Error(`国の更新に失敗しました: ${error.message}`);
+}
+
 export async function deleteTransactions(
   supabase: SupabaseClient,
   ids: string[],

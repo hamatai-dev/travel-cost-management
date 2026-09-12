@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listSelectableCategories } from "@/lib/categories/supabaseCategories";
+import { COMMON_COUNTRIES } from "@/lib/countries/commonCountries";
 import { contrastTextColor } from "@/lib/format/contrastTextColor";
 import { truncateText } from "@/lib/format/truncateText";
 import { fetchJpyRate } from "@/lib/fx/fetchRate";
@@ -48,12 +49,14 @@ import {
   fetchTransactionsPage,
   type TransactionListRow,
   updateTransactionCategory,
+  updateTransactionCountry,
 } from "@/lib/transactions/supabaseTransactionsList";
 import type { Category, TransactionType } from "@/types/transaction";
 
 const PAGE_SIZE = 20;
 const ALL = "__all__";
 const UNCATEGORIZED = "__uncategorized__";
+const UNSPECIFIED_COUNTRY = "__unspecified__";
 const TYPE_LABEL: Record<TransactionType, string> = {
   expense: "支出",
   income: "収入",
@@ -283,6 +286,20 @@ export default function TransactionsPage() {
         prev.map((r) => (r.id === row.id ? { ...r, category_id: prevCategoryId } : r)),
       );
       toast.error(err instanceof Error ? err.message : "カテゴリの更新に失敗しました");
+    }
+  }
+
+  async function handleCountryChange(row: TransactionListRow, country: string | null) {
+    if (row.country === country) return;
+    const prevCountry = row.country;
+    // 一覧上で即座に反映されるよう楽観的更新し、失敗時は元に戻す
+    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, country } : r)));
+    try {
+      const supabase = createClient();
+      await updateTransactionCountry(supabase, row.id, country);
+    } catch (err) {
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, country: prevCountry } : r)));
+      toast.error(err instanceof Error ? err.message : "国の更新に失敗しました");
     }
   }
 
@@ -577,7 +594,35 @@ export default function TransactionsPage() {
                   <TableCell className="text-muted-foreground">
                     {accountNameById.get(row.account_id) ?? "-"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{row.country || "-"}</TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Select
+                      value={row.country || UNSPECIFIED_COUNTRY}
+                      onValueChange={(v) =>
+                        handleCountryChange(row, !v || v === UNSPECIFIED_COUNTRY ? null : v)
+                      }
+                    >
+                      <SelectTrigger size="sm" className="w-fit min-w-0 border-none px-0">
+                        <SelectValue placeholder="国">
+                          {(v: string) => (
+                            <span className="text-muted-foreground">
+                              {v === UNSPECIFIED_COUNTRY ? "-" : v}
+                            </span>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={UNSPECIFIED_COUNTRY}>未選択</SelectItem>
+                        {row.country && !COMMON_COUNTRIES.includes(row.country) && (
+                          <SelectItem value={row.country}>{row.country}</SelectItem>
+                        )}
+                        {COMMON_COUNTRIES.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {row.memo ? truncateText(row.memo, 12) : "-"}
                   </TableCell>

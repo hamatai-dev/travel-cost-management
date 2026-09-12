@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { COMMON_COUNTRIES } from "@/lib/countries/commonCountries";
 import { createClient } from "@/lib/supabase/client";
 import type { TransactionListRow } from "@/lib/transactions/supabaseTransactionsList";
 import { updateTransaction } from "@/lib/transactions/supabaseTransactionsList";
@@ -27,6 +28,7 @@ import { transactionEditSchema } from "@/lib/transactions/transactionEditSchema"
 import type { Category, TransactionType } from "@/types/transaction";
 
 const UNCATEGORIZED = "__uncategorized__";
+const UNSPECIFIED_COUNTRY = "__unspecified__";
 const TYPE_LABEL: Record<TransactionType, string> = {
   expense: "支出",
   income: "収入",
@@ -223,11 +225,27 @@ function EditTransactionForm({
 
         <div>
           <Label htmlFor="edit-country">国</Label>
-          <Input
-            id="edit-country"
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-          />
+          <Select
+            value={country || UNSPECIFIED_COUNTRY}
+            onValueChange={(v) => setCountry(!v || v === UNSPECIFIED_COUNTRY ? "" : v)}
+          >
+            <SelectTrigger id="edit-country" className="w-full">
+              <SelectValue placeholder="未選択">
+                {(v: string) => (v === UNSPECIFIED_COUNTRY ? "未選択" : v)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNSPECIFIED_COUNTRY}>未選択</SelectItem>
+              {country && !COMMON_COUNTRIES.includes(country) && (
+                <SelectItem value={country}>{country}</SelectItem>
+              )}
+              {COMMON_COUNTRIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div>

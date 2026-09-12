@@ -20,6 +20,7 @@ import { NumericKeypad } from "@/components/numeric-keypad";
 import { SuggestionChips } from "@/components/suggestion-chips";
 import { inferCategoryFromMerchant } from "@/lib/categories/inferCategory";
 import { listSelectableCategories } from "@/lib/categories/supabaseCategories";
+import { COMMON_COUNTRIES } from "@/lib/countries/commonCountries";
 import { COMMON_CURRENCIES } from "@/lib/currency/commonCurrencies";
 import {
   enqueueCashTransaction,
@@ -37,6 +38,7 @@ import { runCashTransactionSync } from "@/lib/transactions/runSync";
 import type { Category, TransactionType } from "@/types/transaction";
 
 const UNCATEGORIZED = "__uncategorized__";
+const UNSPECIFIED_COUNTRY = "__unspecified__";
 
 // toISOString()はUTC基準になり日本時間では日付がずれることがあるため、
 // 「今日」の初期値はローカルの年月日から組み立てる
@@ -189,11 +191,27 @@ function CashEntryForm({
         <Label htmlFor={`country-${transactionType}`} className="mb-1.5">
           国(任意)
         </Label>
-        <Input
-          id={`country-${transactionType}`}
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-        />
+        <Select
+          value={country || UNSPECIFIED_COUNTRY}
+          onValueChange={(v) => setCountry(!v || v === UNSPECIFIED_COUNTRY ? "" : v)}
+        >
+          <SelectTrigger id={`country-${transactionType}`} className="w-full">
+            <SelectValue placeholder="未選択">
+              {(v: string) => (v === UNSPECIFIED_COUNTRY ? "未選択" : v)}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={UNSPECIFIED_COUNTRY}>未選択</SelectItem>
+            {country && !COMMON_COUNTRIES.includes(country) && (
+              <SelectItem value={country}>{country}</SelectItem>
+            )}
+            {COMMON_COUNTRIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <SuggestionChips
           values={frequentCountries.filter((c) => c !== country)}
           onSelect={setCountry}

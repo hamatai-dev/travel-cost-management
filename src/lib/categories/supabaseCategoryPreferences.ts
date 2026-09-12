@@ -80,3 +80,44 @@ export async function saveCategorySortOrder(
 
   if (error) throw new Error(`並び順の保存に失敗しました: ${error.message}`);
 }
+
+/** このユーザーが指定したカテゴリのバッジ色(category_id → 色コード)。 */
+export async function fetchCategoryColors(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<Map<string, string>> {
+  const { data, error } = await supabase
+    .from("category_color_for_user")
+    .select("category_id, color")
+    .eq("user_id", userId);
+
+  if (error) throw new Error(`カテゴリの色の取得に失敗しました: ${error.message}`);
+  return new Map((data ?? []).map((r) => [r.category_id as string, r.color as string]));
+}
+
+/** カテゴリの色を保存する。colorにnullを渡すと設定を削除し、デフォルトの見た目に戻す。 */
+export async function saveCategoryColorForUser(
+  supabase: SupabaseClient,
+  userId: string,
+  categoryId: string,
+  color: string | null,
+): Promise<void> {
+  if (color == null) {
+    const { error } = await supabase
+      .from("category_color_for_user")
+      .delete()
+      .eq("user_id", userId)
+      .eq("category_id", categoryId);
+    if (error) throw new Error(`カテゴリの色のリセットに失敗しました: ${error.message}`);
+    return;
+  }
+
+  const { error } = await supabase
+    .from("category_color_for_user")
+    .upsert(
+      { user_id: userId, category_id: categoryId, color },
+      { onConflict: "user_id,category_id" },
+    );
+
+  if (error) throw new Error(`カテゴリの色の保存に失敗しました: ${error.message}`);
+}

@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Pencil, Trash2 } from "lucide-react";
+import { GripVertical, Pencil, Trash2, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -39,6 +39,7 @@ import {
 } from "@/lib/categories/supabaseCategoryManagement";
 import {
   hideCategoryForUser,
+  saveCategoryColorForUser,
   saveCategorySortOrder,
   unhideCategoryForUser,
 } from "@/lib/categories/supabaseCategoryPreferences";
@@ -51,6 +52,8 @@ const ADD_PLACEHOLDER: Record<TransactionType, string> = {
   expense: "例: お土産",
   income: "例: フリーランス収入",
 };
+// 色未設定のカテゴリをカラーピッカーで開いたときに表示する初期値(見た目には反映されない)
+const DEFAULT_SWATCH_COLOR = "#cbd5e1";
 
 function SortableCategoryRow({ id, children }: { id: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -189,6 +192,17 @@ function CategoryKindPanel({
     }
   }
 
+  async function handleColorChange(id: string, color: string | null) {
+    if (!userId) return;
+    try {
+      const supabase = createClient();
+      await saveCategoryColorForUser(supabase, userId, id, color);
+      onChanged();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "色の更新に失敗しました");
+    }
+  }
+
   async function handleConfirmDelete() {
     if (!deleteTarget || !userId) return;
     try {
@@ -284,6 +298,26 @@ function CategoryKindPanel({
                   <div className="flex flex-1 items-center justify-between gap-2">
                     <span className="truncate">{c.name}</span>
                     <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="color"
+                          aria-label={`${c.name}の色を選択`}
+                          value={c.color ?? DEFAULT_SWATCH_COLOR}
+                          onChange={(e) => handleColorChange(c.id, e.target.value)}
+                          className="size-6 cursor-pointer rounded-full border border-input bg-transparent p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:rounded-full [&::-webkit-color-swatch-wrapper]:p-0"
+                        />
+                        {c.color && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-6"
+                            aria-label={`${c.name}の色をリセット`}
+                            onClick={() => handleColorChange(c.id, null)}
+                          >
+                            <X className="size-3" />
+                          </Button>
+                        )}
+                      </div>
                       {!c.is_default && c.kind !== "income" && (
                         <Label
                           htmlFor={`fixed-cost-${c.id}`}

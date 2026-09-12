@@ -60,11 +60,12 @@ create policy "categories_delete_own" on public.categories
   for delete using (auth.uid() = user_id);
 
 -- ==========================================
--- category_hidden_for_user / category_sort_order_for_user:
--- カテゴリに対するユーザーごとの見た目の好み(非表示・並び順)。
--- デフォルトカテゴリ(user_id is null)は共有マスタなので直接削除・並び替えできない
--- 代わりに、ユーザーごとに「自分の一覧からは隠す」「この順番で表示する」を
--- 上書きできるようにする。自作カテゴリにも同じ仕組みを使う。
+-- category_hidden_for_user / category_sort_order_for_user / category_color_for_user:
+-- カテゴリに対するユーザーごとの見た目の好み(非表示・並び順・バッジ色)。
+-- デフォルトカテゴリ(user_id is null)は共有マスタなので直接削除・並び替え・
+-- 色変更できない代わりに、ユーザーごとに「自分の一覧からは隠す」「この順番で
+-- 表示する」「この色で表示する」を上書きできるようにする。自作カテゴリにも
+-- 同じ仕組みを使う。
 -- ==========================================
 create table public.category_hidden_for_user (
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -99,6 +100,25 @@ create policy "category_sort_order_for_user_insert_own" on public.category_sort_
 create policy "category_sort_order_for_user_update_own" on public.category_sort_order_for_user
   for update using (auth.uid() = user_id);
 create policy "category_sort_order_for_user_delete_own" on public.category_sort_order_for_user
+  for delete using (auth.uid() = user_id);
+
+create table public.category_color_for_user (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  category_id uuid not null references public.categories(id) on delete cascade,
+  color text not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, category_id)
+);
+
+alter table public.category_color_for_user enable row level security;
+
+create policy "category_color_for_user_select_own" on public.category_color_for_user
+  for select using (auth.uid() = user_id);
+create policy "category_color_for_user_insert_own" on public.category_color_for_user
+  for insert with check (auth.uid() = user_id);
+create policy "category_color_for_user_update_own" on public.category_color_for_user
+  for update using (auth.uid() = user_id);
+create policy "category_color_for_user_delete_own" on public.category_color_for_user
   for delete using (auth.uid() = user_id);
 
 -- ==========================================

@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listSelectableCategories } from "@/lib/categories/supabaseCategories";
+import { contrastTextColor } from "@/lib/format/contrastTextColor";
 import { truncateText } from "@/lib/format/truncateText";
 import { fetchJpyRate } from "@/lib/fx/fetchRate";
 import { persistResolvedAmounts } from "@/lib/fx/persistResolvedAmounts";
@@ -87,6 +88,7 @@ export default function TransactionsPage() {
   const [exporting, setExporting] = useState(false);
 
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
+  const categoryColorById = new Map(categories.map((c) => [c.id, c.color]));
   const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
   // 「種別」フィルタで支出/収入を選んでいる間は、カテゴリの選択肢もその種別
   // (+ 支出・収入共通の'both')だけに絞る
@@ -538,15 +540,24 @@ export default function TransactionsPage() {
                     >
                       <SelectTrigger size="sm" className="w-fit min-w-0 border-none px-0">
                         <SelectValue placeholder="カテゴリ">
-                          {(v: string) =>
-                            v === UNCATEGORIZED ? (
-                              <Badge variant="outline">未分類</Badge>
-                            ) : (
-                              <Badge variant="secondary">
+                          {(v: string) => {
+                            if (v === UNCATEGORIZED) {
+                              return <Badge variant="outline">未分類</Badge>;
+                            }
+                            const color = categoryColorById.get(v);
+                            return (
+                              <Badge
+                                variant="secondary"
+                                style={
+                                  color
+                                    ? { backgroundColor: color, color: contrastTextColor(color) }
+                                    : undefined
+                                }
+                              >
                                 {categoryNameById.get(v) ?? "-"}
                               </Badge>
-                            )
-                          }
+                            );
+                          }}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>

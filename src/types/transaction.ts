@@ -22,6 +22,8 @@ export interface Category {
   is_fixed_cost: boolean;
   kind: CategoryKind;
   created_at: string;
+  // ユーザーごとの表示設定(バッジ色)。未設定ならnull。
+  color: string | null;
 }
 
 // CSVアダプターが共通で出力する正規化済みレコード。

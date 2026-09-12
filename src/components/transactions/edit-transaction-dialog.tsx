@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { COMMON_COUNTRIES } from "@/lib/countries/commonCountries";
+import { COMMON_CURRENCIES } from "@/lib/currency/commonCurrencies";
 import { createClient } from "@/lib/supabase/client";
 import type { TransactionListRow } from "@/lib/transactions/supabaseTransactionsList";
 import { updateTransaction } from "@/lib/transactions/supabaseTransactionsList";
@@ -151,13 +152,21 @@ function EditTransactionForm({
           </div>
           <div>
             <Label htmlFor="edit-currency">通貨</Label>
-            <Input
-              id="edit-currency"
-              value={currency}
-              maxLength={3}
-              className="uppercase"
-              onChange={(e) => setCurrency(e.target.value)}
-            />
+            <Select value={currency} onValueChange={(v) => v && setCurrency(v)}>
+              <SelectTrigger id="edit-currency" className="w-full">
+                <SelectValue>{(v: string) => v}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {currency && !COMMON_CURRENCIES.some((c) => c.code === currency) && (
+                  <SelectItem value={currency}>{currency}</SelectItem>
+                )}
+                {COMMON_CURRENCIES.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.code}({c.label})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

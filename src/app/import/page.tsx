@@ -69,7 +69,7 @@ export default function ImportPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 p-4">
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 p-4 [&>*]:min-w-0">
       <div>
         <h1 className="text-xl font-semibold">CSVインポート</h1>
         <p className="text-sm text-muted-foreground">

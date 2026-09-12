@@ -140,7 +140,7 @@ function EditTransactionForm({
   return (
     <>
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0">
           <div>
             <Label htmlFor="edit-date">日付</Label>
             <Input

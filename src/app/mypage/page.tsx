@@ -92,7 +92,7 @@ export default function MyPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
+    <main className="mx-auto flex max-w-md flex-col gap-4 p-4 [&>*]:min-w-0">
       <h1 className="text-xl font-semibold">マイページ</h1>
 
       {loading ? (

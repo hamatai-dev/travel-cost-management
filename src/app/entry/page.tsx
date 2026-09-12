@@ -18,6 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NumericKeypad } from "@/components/numeric-keypad";
 import { SuggestionChips } from "@/components/suggestion-chips";
+import { useIsMobileViewport } from "@/hooks/use-is-mobile-viewport";
 import { inferCategoryFromMerchant } from "@/lib/categories/inferCategory";
 import { listSelectableCategories } from "@/lib/categories/supabaseCategories";
 import { COMMON_COUNTRIES } from "@/lib/countries/commonCountries";
@@ -67,6 +68,7 @@ function CashEntryForm({
   frequentCountries,
   onSubmitted,
 }: CashEntryFormProps) {
+  const isMobile = useIsMobileViewport();
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("JPY");
   const [date, setDate] = useState(todayLocalDateString);
@@ -145,13 +147,17 @@ function CashEntryForm({
           <Input
             id={`amount-${transactionType}`}
             type="number"
-            inputMode="decimal"
+            inputMode={isMobile ? "none" : "decimal"}
+            readOnly={isMobile}
             required
             min="0"
             step="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
+          {isMobile && (
+            <p className="mt-1 text-xs text-muted-foreground">下の電卓で入力してください</p>
+          )}
         </div>
         <div className="w-32">
           <Label htmlFor={`currency-${transactionType}`} className="mb-1.5">
@@ -355,7 +361,7 @@ export default function CashEntryPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-6 p-4">
+    <main className="mx-auto flex max-w-md flex-col gap-6 p-4 [&>*]:min-w-0">
       <Card>
         <CardHeader>
           <CardTitle>支出・収入を記録</CardTitle>

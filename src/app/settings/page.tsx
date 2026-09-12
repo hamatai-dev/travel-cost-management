@@ -13,7 +13,7 @@ const ITEMS = [
 
 export default function SettingsPage() {
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-3 p-4">
+    <main className="mx-auto flex max-w-md flex-col gap-3 p-4 [&>*]:min-w-0">
       <h1 className="text-xl font-semibold">設定</h1>
 
       {ITEMS.map(({ href, label, icon: Icon }) => (

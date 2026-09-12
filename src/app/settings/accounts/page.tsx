@@ -71,7 +71,7 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
+    <main className="mx-auto flex max-w-md flex-col gap-4 p-4 [&>*]:min-w-0">
       <div>
         <h1 className="text-xl font-semibold">支払い種別管理</h1>
         <p className="text-sm text-muted-foreground">

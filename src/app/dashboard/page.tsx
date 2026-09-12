@@ -246,7 +246,7 @@ export default function DashboardPage() {
       : `${selectedYear}年${Number(selectedMonth)}月`;
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 p-4">
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 p-4 [&>*]:min-w-0">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">ダッシュボード</h1>
         <div className="flex gap-2">

@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Pencil, Trash2, X } from "lucide-react";
+import { GripVertical, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -24,8 +24,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CATEGORY_COLOR_PALETTE } from "@/lib/categories/categoryColorPalette";
 import { isDuplicateCategoryName } from "@/lib/categories/isDuplicateCategoryName";
 import {
   fetchHiddenCategories,
@@ -52,8 +60,7 @@ const ADD_PLACEHOLDER: Record<TransactionType, string> = {
   expense: "例: お土産",
   income: "例: フリーランス収入",
 };
-// 色未設定のカテゴリをカラーピッカーで開いたときに表示する初期値(見た目には反映されない)
-const DEFAULT_SWATCH_COLOR = "#cbd5e1";
+const UNSET_COLOR = "__unset__";
 
 function SortableCategoryRow({ id, children }: { id: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -298,26 +305,43 @@ function CategoryKindPanel({
                   <div className="flex flex-1 items-center justify-between gap-2">
                     <span className="truncate">{c.name}</span>
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="color"
-                          aria-label={`${c.name}の色を選択`}
-                          value={c.color ?? DEFAULT_SWATCH_COLOR}
-                          onChange={(e) => handleColorChange(c.id, e.target.value)}
-                          className="size-6 cursor-pointer rounded-full border border-input bg-transparent p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:rounded-full [&::-webkit-color-swatch-wrapper]:p-0"
-                        />
-                        {c.color && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="size-6"
-                            aria-label={`${c.name}の色をリセット`}
-                            onClick={() => handleColorChange(c.id, null)}
-                          >
-                            <X className="size-3" />
-                          </Button>
-                        )}
-                      </div>
+                      <Select
+                        value={c.color ?? UNSET_COLOR}
+                        onValueChange={(v) =>
+                          handleColorChange(c.id, v === UNSET_COLOR ? null : v)
+                        }
+                      >
+                        <SelectTrigger size="sm" aria-label={`${c.name}の色を選択`}>
+                          <SelectValue placeholder="色">
+                            {(v: string) => {
+                              const option = CATEGORY_COLOR_PALETTE.find(
+                                (o) => o.value === v,
+                              );
+                              return (
+                                <>
+                                  <span
+                                    className="size-3 rounded-full border border-black/10"
+                                    style={{ backgroundColor: option?.value ?? "transparent" }}
+                                  />
+                                  {option?.name ?? "未設定"}
+                                </>
+                              );
+                            }}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={UNSET_COLOR}>未設定</SelectItem>
+                          {CATEGORY_COLOR_PALETTE.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              <span
+                                className="size-3 rounded-full border border-black/10"
+                                style={{ backgroundColor: option.value }}
+                              />
+                              {option.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       {!c.is_default && c.kind !== "income" && (
                         <Label
                           htmlFor={`fixed-cost-${c.id}`}

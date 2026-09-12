@@ -303,7 +303,36 @@ function CategoryKindPanel({
                   </div>
                 ) : (
                   <div className="flex flex-1 items-center justify-between gap-2">
-                    <span className="truncate">{c.name}</span>
+                    <div className="flex min-w-0 items-center gap-1">
+                      <span className="truncate">{c.name}</span>
+                      {!c.is_default && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingId(c.id);
+                            setEditingName(c.name);
+                          }}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                      )}
+                      {!c.is_default && c.kind !== "income" && (
+                        <Label
+                          htmlFor={`fixed-cost-${c.id}`}
+                          className="flex items-center gap-1.5 text-xs whitespace-nowrap text-muted-foreground"
+                        >
+                          <Checkbox
+                            id={`fixed-cost-${c.id}`}
+                            checked={c.is_fixed_cost}
+                            onCheckedChange={(checked) =>
+                              handleToggleFixedCost(c.id, checked === true)
+                            }
+                          />
+                          固定費
+                        </Label>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3">
                       <Select
                         value={c.color ?? UNSET_COLOR}
@@ -317,14 +346,13 @@ function CategoryKindPanel({
                               const option = CATEGORY_COLOR_PALETTE.find(
                                 (o) => o.value === v,
                               );
-                              return (
-                                <>
-                                  <span
-                                    className="size-3 rounded-full border border-black/10"
-                                    style={{ backgroundColor: option?.value ?? "transparent" }}
-                                  />
-                                  {option?.name ?? "未設定"}
-                                </>
+                              return option ? (
+                                <span
+                                  className="size-3 rounded-full border border-black/10"
+                                  style={{ backgroundColor: option.value }}
+                                />
+                              ) : (
+                                "未設定"
                               );
                             }}
                           </SelectValue>
@@ -337,43 +365,14 @@ function CategoryKindPanel({
                                 className="size-3 rounded-full border border-black/10"
                                 style={{ backgroundColor: option.value }}
                               />
-                              {option.name}
+                              <span className="sr-only">{option.name}</span>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      {!c.is_default && c.kind !== "income" && (
-                        <Label
-                          htmlFor={`fixed-cost-${c.id}`}
-                          className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                        >
-                          <Checkbox
-                            id={`fixed-cost-${c.id}`}
-                            checked={c.is_fixed_cost}
-                            onCheckedChange={(checked) =>
-                              handleToggleFixedCost(c.id, checked === true)
-                            }
-                          />
-                          固定費
-                        </Label>
-                      )}
-                      <div className="flex gap-1">
-                        {!c.is_default && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditingId(c.id);
-                              setEditingName(c.name);
-                            }}
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
-                        )}
-                        <Button size="icon" variant="ghost" onClick={() => setDeleteTarget(c)}>
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => setDeleteTarget(c)}>
+                        <Trash2 className="size-4" />
+                      </Button>
                     </div>
                   </div>
                 )}

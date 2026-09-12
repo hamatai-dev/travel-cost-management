@@ -28,6 +28,7 @@ import {
 } from "@/lib/analytics/runDashboardAnalytics";
 import type { CurrencyTrend } from "@/lib/fx/currencyTrend";
 import { runCurrencyTrends } from "@/lib/fx/runCurrencyTrend";
+import { fetchInitialBalance } from "@/lib/settings/supabaseUserSettings";
 import { createClient } from "@/lib/supabase/client";
 import { resolveMonthRange } from "@/lib/transactions/resolveMonthRange";
 import { cn } from "@/lib/utils";
@@ -254,8 +255,13 @@ export default function DashboardPage() {
         // レートが取得できない場合も静かに非表示のままにする
       });
 
-    runDashboardAnalytics(supabase, userId, {})
-      .then((result) => !cancelled && setTotalBalanceJpy(result.netJpy))
+    Promise.all([
+      runDashboardAnalytics(supabase, userId, {}),
+      fetchInitialBalance(supabase, userId).catch(() => 0),
+    ])
+      .then(([result, initialBalanceJpy]) => {
+        if (!cancelled) setTotalBalanceJpy(initialBalanceJpy + result.netJpy);
+      })
       .catch(() => {
         // 取れなくても円グラフ側は選択中期間の内訳として動くので静かに諦める
       });
@@ -333,7 +339,7 @@ export default function DashboardPage() {
         <>
           <Card>
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">現在の総残高(全期間の収支)</p>
+              <p className="text-sm text-muted-foreground">現在の総残高(初期残高+全期間の収支)</p>
               {totalBalanceJpy != null ? (
                 <p
                   className={cn(

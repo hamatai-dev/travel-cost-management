@@ -1,6 +1,6 @@
 "use client";
 
-import { Tag, Wallet, History, User } from "lucide-react";
+import { Tag, Wallet, History, User, PiggyBank } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -8,6 +8,7 @@ const ITEMS = [
   { href: "/mypage", label: "マイページ", icon: User },
   { href: "/settings/categories", label: "カテゴリ管理", icon: Tag },
   { href: "/settings/accounts", label: "支払い種別管理", icon: Wallet },
+  { href: "/settings/balance", label: "初期残高設定", icon: PiggyBank },
   { href: "/settings/imports", label: "インポート履歴", icon: History },
 ];
 

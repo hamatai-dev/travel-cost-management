@@ -21,13 +21,12 @@ import type { AggregationResult, Total } from "@/lib/analytics/aggregate";
 import type { CountryDailyAverage } from "@/lib/analytics/countryDailyAverage";
 import type { DateRange } from "@/lib/analytics/dateRange";
 import type { MonthlyCashFlow } from "@/lib/analytics/monthlyCashFlow";
-import type { PeriodComparisons } from "@/lib/analytics/periodComparison";
 import {
   runDashboardAnalytics,
   type DashboardData,
 } from "@/lib/analytics/runDashboardAnalytics";
-import { runPeriodComparisons } from "@/lib/analytics/runPeriodComparisons";
-import { runCurrencyTrend, type CurrencyTrendResult } from "@/lib/fx/runCurrencyTrend";
+import type { CurrencyTrend } from "@/lib/fx/currencyTrend";
+import { runCurrencyTrends } from "@/lib/fx/runCurrencyTrend";
 import { createClient } from "@/lib/supabase/client";
 import { resolveMonthRange } from "@/lib/transactions/resolveMonthRange";
 import { cn } from "@/lib/utils";
@@ -48,47 +47,74 @@ function formatChangeRate(rate: number | null): string {
   return `${percent >= 0 ? "+" : ""}${percent}%`;
 }
 
-function changeRateColorClass(rate: number | null): string | undefined {
-  if (rate == null) return undefined;
-  if (rate > 0) return "text-red-600";
-  if (rate < 0) return "text-green-600";
-  return undefined;
-}
-
 type State =
   | { step: "loading" }
   | { step: "ready"; data: DashboardData }
   | { step: "error"; message: string };
 
-function BarList({ result }: { result: AggregationResult }) {
-  const max = Math.max(1, ...result.totals.map((t) => t.totalJpy));
+// カテゴリ数などに応じて巡回させる円グラフ用の配色。fill-*(SVG)とbg-*(凡例の丸)を
+// 常にペアで使うため、Tailwindのビルド時クラス検出に引っかかるようリテラルで列挙する。
+const BREAKDOWN_PALETTE: { fill: string; bg: string }[] = [
+  { fill: "fill-red-500", bg: "bg-red-500" },
+  { fill: "fill-orange-500", bg: "bg-orange-500" },
+  { fill: "fill-amber-500", bg: "bg-amber-500" },
+  { fill: "fill-yellow-500", bg: "bg-yellow-500" },
+  { fill: "fill-lime-500", bg: "bg-lime-500" },
+  { fill: "fill-green-500", bg: "bg-green-500" },
+  { fill: "fill-teal-500", bg: "bg-teal-500" },
+  { fill: "fill-cyan-500", bg: "bg-cyan-500" },
+  { fill: "fill-blue-500", bg: "bg-blue-500" },
+  { fill: "fill-indigo-500", bg: "bg-indigo-500" },
+  { fill: "fill-purple-500", bg: "bg-purple-500" },
+  { fill: "fill-pink-500", bg: "bg-pink-500" },
+  { fill: "fill-gray-500", bg: "bg-gray-500" },
+];
 
+function BreakdownPieChart({ result }: { result: AggregationResult }) {
   if (result.totals.length === 0) {
     return <p className="text-sm text-muted-foreground">データがありません</p>;
   }
 
+  const total = result.totals.reduce((sum, t) => sum + t.totalJpy, 0);
+
   return (
-    <ul className="space-y-3">
-      {result.totals.map((t: Total) => (
-        <li key={t.label} className="text-sm">
-          <div className="flex justify-between">
-            <span>{t.label}</span>
-            <span className="text-muted-foreground">¥{t.totalJpy.toLocaleString()}</span>
-          </div>
-          <div className="mt-1 h-2 rounded bg-muted">
-            <div
-              className="h-2 rounded bg-primary"
-              style={{ width: `${(t.totalJpy / max) * 100}%` }}
-            />
-          </div>
-        </li>
-      ))}
+    <div>
+      <div className="flex items-start gap-4">
+        <PieChart
+          data={result.totals.map((t: Total, i) => ({
+            label: t.label,
+            value: t.totalJpy,
+            colorClass: BREAKDOWN_PALETTE[i % BREAKDOWN_PALETTE.length].fill,
+          }))}
+        />
+        <ul className="flex-1 space-y-2 text-sm">
+          {result.totals.map((t: Total, i) => (
+            <li key={t.label} className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "size-2.5 shrink-0 rounded-full",
+                  BREAKDOWN_PALETTE[i % BREAKDOWN_PALETTE.length].bg,
+                )}
+              />
+              <span className="flex-1">{t.label}</span>
+              <span className="font-medium">
+                ¥{t.totalJpy.toLocaleString()}
+                {total > 0 && (
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    ({Math.round((t.totalJpy / total) * 100)}%)
+                  </span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
       {result.excludedCount > 0 && (
-        <li className="text-xs text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           ※ {result.excludedCount}件は為替レート未取得のため集計に含まれていません
-        </li>
+        </p>
       )}
-    </ul>
+    </div>
   );
 }
 
@@ -149,8 +175,7 @@ export default function DashboardPage() {
   const [selectedYear, setSelectedYear] = useState(ALL);
   const [selectedMonth, setSelectedMonth] = useState(ALL);
   const [userId, setUserId] = useState<string | null>(null);
-  const [comparisons, setComparisons] = useState<PeriodComparisons | null>(null);
-  const [currencyTrend, setCurrencyTrend] = useState<CurrencyTrendResult | null>(null);
+  const [currencyTrends, setCurrencyTrends] = useState<CurrencyTrend[]>([]);
   // 選択中の期間フィルタに関係なく、これまでの全取引から計算する「現在の総残高」。
   const [totalBalanceJpy, setTotalBalanceJpy] = useState<number | null>(null);
 
@@ -187,22 +212,16 @@ export default function DashboardPage() {
   }, [selectedYear, selectedMonth]);
 
   useEffect(() => {
-    // 先月比・先週比・為替トレンド・現在の総残高は選択中の期間フィルタとは独立
+    // 為替トレンド・現在の総残高は選択中の期間フィルタとは独立
     // (常に直近/全期間を見る)なので、userId が確定した時点で一度だけ取得する。
     if (!userId) return;
     let cancelled = false;
     const supabase = createClient();
 
-    runPeriodComparisons(supabase, userId)
-      .then((result) => !cancelled && setComparisons(result))
+    runCurrencyTrends()
+      .then((result) => !cancelled && setCurrencyTrends(result))
       .catch(() => {
-        // 取れなくてもダッシュボード本体は問題なく使えるので静かに諦める
-      });
-
-    runCurrencyTrend(supabase, userId)
-      .then((result) => !cancelled && setCurrencyTrend(result))
-      .catch(() => {
-        // 滞在国・レートが特定できない場合も同様に静かに非表示のままにする
+        // レートが取得できない場合も静かに非表示のままにする
       });
 
     runDashboardAnalytics(supabase, userId, {})
@@ -352,29 +371,15 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {(comparisons || currencyTrend) && (
+          {currencyTrends.length > 0 && (
             <Card>
               <CardContent className="space-y-1.5 pt-6 text-sm">
-                {comparisons && (
-                  <p className="text-muted-foreground">
-                    先月比{" "}
-                    <span className={changeRateColorClass(comparisons.monthOverMonth.changeRate)}>
-                      {formatChangeRate(comparisons.monthOverMonth.changeRate)}
-                    </span>
-                    {" ・ "}
-                    先週比{" "}
-                    <span className={changeRateColorClass(comparisons.weekOverWeek.changeRate)}>
-                      {formatChangeRate(comparisons.weekOverWeek.changeRate)}
-                    </span>
+                {currencyTrends.map((trend) => (
+                  <p key={trend.currency} className="text-muted-foreground">
+                    {trend.currency} 1{trend.currency} = ¥{trend.currentRateJpy.toFixed(2)}
+                    (先週比 {formatChangeRate(trend.changeRate)}・{trend.direction})
                   </p>
-                )}
-                {currencyTrend && (
-                  <p className="text-muted-foreground">
-                    現在の滞在国: {currencyTrend.country}({currencyTrend.currency}) 1
-                    {currencyTrend.currency} = ¥{currencyTrend.currentRateJpy.toFixed(2)}
-                    (先週比 {formatChangeRate(currencyTrend.changeRate)}・{currencyTrend.direction})
-                  </p>
-                )}
+                ))}
               </CardContent>
             </Card>
           )}
@@ -390,20 +395,20 @@ export default function DashboardPage() {
                   <TabsTrigger value="month">月別</TabsTrigger>
                 </TabsList>
                 <TabsContent value="category" className="pt-4">
-                  <BarList result={state.data.byCategory} />
+                  <BreakdownPieChart result={state.data.byCategory} />
                 </TabsContent>
                 <TabsContent value="income" className="pt-4">
-                  <BarList result={state.data.byIncomeCategory} />
+                  <BreakdownPieChart result={state.data.byIncomeCategory} />
                 </TabsContent>
                 <TabsContent value="account" className="pt-4">
-                  <BarList result={state.data.byAccount} />
+                  <BreakdownPieChart result={state.data.byAccount} />
                 </TabsContent>
                 <TabsContent value="country" className="pt-4">
-                  <BarList result={state.data.byCountry} />
+                  <BreakdownPieChart result={state.data.byCountry} />
                   <CountryDailyAverageList items={state.data.countryDailyAverages} />
                 </TabsContent>
                 <TabsContent value="month" className="pt-4">
-                  <BarList result={state.data.byMonth} />
+                  <BreakdownPieChart result={state.data.byMonth} />
                   <MonthlyCashFlowList items={state.data.monthlyCashFlow} />
                 </TabsContent>
               </Tabs>

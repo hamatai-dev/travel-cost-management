@@ -1,38 +1,31 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { format, subDays } from "date-fns";
-import { fetchLatestForeignLocation } from "@/lib/transactions/supabaseTransactions";
+import { COMMON_CURRENCIES } from "@/lib/currency/commonCurrencies";
 import { computeCurrencyTrend, type CurrencyTrend } from "./currencyTrend";
 import { fetchJpyRate } from "./fetchRate";
 
-export interface CurrencyTrendResult extends CurrencyTrend {
-  country: string;
-}
-
 /**
- * 「今いる国の為替レート、直近1週間でどう動いたか」の一言サマリーを組み立てる。
- * 直近の取引から国・通貨を推定できない、またはレートが取得できない場合はnull
- * (この機能はあくまで補助的な一言表示なので、取れないときは静かに非表示にする)。
+ * 通貨セレクトに出している主要通貨(JPYを除く)それぞれについて、
+ * 「直近1週間でレートがどう動いたか」の一覧を組み立てる。
+ * レートが取得できなかった通貨は結果から静かに除外する
+ * (この機能はあくまで補助的な一覧表示なので、一部取れなくても表示自体は続ける)。
  */
-export async function runCurrencyTrend(
-  supabase: SupabaseClient,
-  userId: string,
+export async function runCurrencyTrends(
   today: Date = new Date(),
-): Promise<CurrencyTrendResult | null> {
-  const location = await fetchLatestForeignLocation(supabase, userId);
-  if (!location) return null;
-
+): Promise<CurrencyTrend[]> {
   const todayStr = format(today, "yyyy-MM-dd");
   const weekAgoStr = format(subDays(today, 7), "yyyy-MM-dd");
+  const currencies = COMMON_CURRENCIES.map((c) => c.code).filter((code) => code !== "JPY");
 
-  const [currentRateJpy, previousRateJpy] = await Promise.all([
-    fetchJpyRate(todayStr, location.currency),
-    fetchJpyRate(weekAgoStr, location.currency),
-  ]);
+  const results = await Promise.all(
+    currencies.map(async (currency) => {
+      const [currentRateJpy, previousRateJpy] = await Promise.all([
+        fetchJpyRate(todayStr, currency),
+        fetchJpyRate(weekAgoStr, currency),
+      ]);
+      if (currentRateJpy == null || previousRateJpy == null) return null;
+      return computeCurrencyTrend(currency, currentRateJpy, previousRateJpy);
+    }),
+  );
 
-  if (currentRateJpy == null || previousRateJpy == null) return null;
-
-  return {
-    country: location.country,
-    ...computeCurrencyTrend(location.currency, currentRateJpy, previousRateJpy),
-  };
+  return results.filter((r): r is CurrencyTrend => r != null);
 }

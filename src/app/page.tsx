@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import { listSelectableCategories } from "@/lib/categories/supabaseCategories";
 import { COMMON_COUNTRIES } from "@/lib/countries/commonCountries";
+import { COUNTRY_FLAG_COLORS } from "@/lib/countries/countryFlagColors";
 import { contrastTextColor } from "@/lib/format/contrastTextColor";
 import { truncateText } from "@/lib/format/truncateText";
 import { fetchJpyRate } from "@/lib/fx/fetchRate";
@@ -603,11 +604,24 @@ export default function TransactionsPage() {
                     >
                       <SelectTrigger size="sm" className="w-fit min-w-0 border-none px-0">
                         <SelectValue placeholder="国">
-                          {(v: string) => (
-                            <span className="text-muted-foreground">
-                              {v === UNSPECIFIED_COUNTRY ? "-" : v}
-                            </span>
-                          )}
+                          {(v: string) => {
+                            if (v === UNSPECIFIED_COUNTRY) {
+                              return <Badge variant="outline">未選択</Badge>;
+                            }
+                            const color = COUNTRY_FLAG_COLORS[v];
+                            return (
+                              <Badge
+                                variant="secondary"
+                                style={
+                                  color
+                                    ? { backgroundColor: color, color: contrastTextColor(color) }
+                                    : undefined
+                                }
+                              >
+                                {v}
+                              </Badge>
+                            );
+                          }}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>

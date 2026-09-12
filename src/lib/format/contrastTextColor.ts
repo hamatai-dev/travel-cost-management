@@ -1,14 +1,25 @@
 /**
  * 背景色(#rgbまたは#rrggbb)に対して読みやすい文字色("#000000"か"#ffffff")を返す。
- * WCAGの相対輝度計算をもとに、輝度が高い(明るい)背景には黒文字、低い(暗い)
- * 背景には白文字を選ぶ。不正な形式の場合は黒文字を返す。
+ * 輝度が0.5を超えるかどうかだけで黒/白を決めると、黄色や黄緑のような明るい
+ * 中間色で白文字を選んでしまいコントラスト不足になる(WCAG比で2前後しか出ない)。
+ * 背景輝度に対して黒・白それぞれとのWCAGコントラスト比を計算し、比率が高い方を
+ * 採用することで、どの背景色でも実際に読みやすい方を選ぶ。不正な形式の場合は
+ * 黒文字を返す。
  */
 export function contrastTextColor(backgroundColor: string): string {
   const rgb = parseHexColor(backgroundColor);
   if (!rgb) return "#000000";
 
   const luminance = relativeLuminance(rgb);
-  return luminance > 0.5 ? "#000000" : "#ffffff";
+  const contrastWithBlack = contrastRatio(luminance, 0);
+  const contrastWithWhite = contrastRatio(luminance, 1);
+  return contrastWithBlack >= contrastWithWhite ? "#000000" : "#ffffff";
+}
+
+function contrastRatio(luminanceA: number, luminanceB: number): number {
+  const lighter = Math.max(luminanceA, luminanceB);
+  const darker = Math.min(luminanceA, luminanceB);
+  return (lighter + 0.05) / (darker + 0.05);
 }
 
 function parseHexColor(hex: string): [number, number, number] | null {

@@ -38,6 +38,15 @@ import type { Category, TransactionType } from "@/types/transaction";
 
 const UNCATEGORIZED = "__uncategorized__";
 
+// toISOString()はUTC基準になり日本時間では日付がずれることがあるため、
+// 「今日」の初期値はローカルの年月日から組み立てる
+function todayLocalDateString(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
 interface CashEntryFormProps {
   transactionType: TransactionType;
   categories: Category[];
@@ -58,6 +67,7 @@ function CashEntryForm({
 }: CashEntryFormProps) {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("JPY");
+  const [date, setDate] = useState(todayLocalDateString);
   const [merchant, setMerchant] = useState("");
   const [country, setCountry] = useState("");
   const [categoryName, setCategoryName] = useState(UNCATEGORIZED);
@@ -96,6 +106,7 @@ function CashEntryForm({
       tx = buildCashTransaction({
         amount: Number(amount),
         currency: currency.trim().toUpperCase() || undefined,
+        date,
         merchant,
         country: country || undefined,
         categoryName: categoryName === UNCATEGORIZED ? undefined : categoryName,
@@ -160,6 +171,19 @@ function CashEntryForm({
       </div>
       {/* テンキー風の金額入力。素早くタップで金額を組み立てられ、OSキーボードでの直接入力も引き続き使える */}
       <NumericKeypad onKey={(key) => setAmount((prev) => appendKeypadDigit(prev, key))} />
+
+      <div>
+        <Label htmlFor={`date-${transactionType}`} className="mb-1.5">
+          日付
+        </Label>
+        <Input
+          id={`date-${transactionType}`}
+          type="date"
+          required
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+      </div>
 
       <div>
         <Label htmlFor={`country-${transactionType}`} className="mb-1.5">

@@ -1,5 +1,6 @@
 "use client";
 
+import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PieChart } from "@/components/pie-chart";
 import { Card, CardContent } from "@/components/ui/card";
@@ -167,6 +168,35 @@ function MonthlyCashFlowList({ items }: { items: MonthlyCashFlow[] }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+function CurrencyTrendRow({ trend }: { trend: CurrencyTrend }) {
+  const Icon =
+    trend.direction === "円安" ? TrendingUp : trend.direction === "円高" ? TrendingDown : Minus;
+  const colorClass =
+    trend.direction === "円安"
+      ? "text-red-600"
+      : trend.direction === "円高"
+        ? "text-green-600"
+        : "text-muted-foreground";
+
+  return (
+    <li className="flex items-center justify-between py-2.5">
+      <span className="font-medium">{trend.currency}</span>
+      <div className="text-right">
+        <p className="font-medium tabular-nums">
+          ¥{trend.currentRateJpy.toFixed(2)}
+          <span className="ml-1 text-xs font-normal text-muted-foreground">
+            / 1{trend.currency}
+          </span>
+        </p>
+        <p className={cn("flex items-center justify-end gap-1 text-xs", colorClass)}>
+          <Icon className="size-3" />
+          {formatChangeRate(trend.changeRate)}(先週比)
+        </p>
+      </div>
+    </li>
   );
 }
 
@@ -373,13 +403,14 @@ export default function DashboardPage() {
 
           {currencyTrends.length > 0 && (
             <Card>
-              <CardContent className="space-y-1.5 pt-6 text-sm">
-                {currencyTrends.map((trend) => (
-                  <p key={trend.currency} className="text-muted-foreground">
-                    {trend.currency} 1{trend.currency} = ¥{trend.currentRateJpy.toFixed(2)}
-                    (先週比 {formatChangeRate(trend.changeRate)}・{trend.direction})
-                  </p>
-                ))}
+              <CardContent className="pt-6">
+                <p className="mb-1 text-sm font-medium">為替レート</p>
+                <p className="mb-1 text-xs text-muted-foreground">直近1週間の変化</p>
+                <ul className="divide-y">
+                  {currencyTrends.map((trend) => (
+                    <CurrencyTrendRow key={trend.currency} trend={trend} />
+                  ))}
+                </ul>
               </CardContent>
             </Card>
           )}

@@ -79,7 +79,7 @@ function BreakdownPieChart({ result }: { result: AggregationResult }) {
 
   return (
     <div>
-      <div className="flex items-start gap-4">
+      <div className="flex flex-col items-center gap-4">
         <PieChart
           data={result.totals.map((t: Total, i) => ({
             label: t.label,
@@ -87,7 +87,7 @@ function BreakdownPieChart({ result }: { result: AggregationResult }) {
             colorClass: BREAKDOWN_PALETTE[i % BREAKDOWN_PALETTE.length].fill,
           }))}
         />
-        <ul className="flex-1 space-y-2 text-sm">
+        <ul className="w-full space-y-2 text-sm">
           {result.totals.map((t: Total, i) => (
             <li key={t.label} className="flex items-center gap-2">
               <span
@@ -317,7 +317,7 @@ export default function DashboardPage() {
                 <Skeleton className="mt-1 h-9 w-40" />
               )}
 
-              <div className="mt-4 flex items-center gap-4">
+              <div className="mt-4 flex flex-col items-center gap-4">
                 <PieChart
                   data={[
                     { label: "支出", value: state.data.totalJpy, colorClass: "fill-red-500" },
@@ -328,7 +328,7 @@ export default function DashboardPage() {
                     },
                   ]}
                 />
-                <ul className="flex-1 space-y-2 text-sm">
+                <ul className="w-full space-y-2 text-sm">
                   <li className="flex items-center gap-2">
                     <span className="size-2.5 shrink-0 rounded-full bg-red-500" />
                     <span className="flex-1">

@@ -209,6 +209,7 @@ export default function DashboardPage() {
   const [currencyTrends, setCurrencyTrends] = useState<CurrencyTrend[]>([]);
   // 選択中の期間フィルタに関係なく、これまでの全取引から計算する「現在の総残高」。
   const [totalBalanceJpy, setTotalBalanceJpy] = useState<number | null>(null);
+  const [initialBalanceJpy, setInitialBalanceJpy] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -259,8 +260,11 @@ export default function DashboardPage() {
       runDashboardAnalytics(supabase, userId, {}),
       fetchInitialBalance(supabase, userId).catch(() => 0),
     ])
-      .then(([result, initialBalanceJpy]) => {
-        if (!cancelled) setTotalBalanceJpy(initialBalanceJpy + result.netJpy);
+      .then(([result, fetchedInitialBalanceJpy]) => {
+        if (!cancelled) {
+          setInitialBalanceJpy(fetchedInitialBalanceJpy);
+          setTotalBalanceJpy(fetchedInitialBalanceJpy + result.netJpy);
+        }
       })
       .catch(() => {
         // 取れなくても円グラフ側は選択中期間の内訳として動くので静かに諦める
@@ -351,6 +355,11 @@ export default function DashboardPage() {
                 </p>
               ) : (
                 <Skeleton className="mt-1 h-9 w-40" />
+              )}
+              {initialBalanceJpy != null && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  うち初期残高 ¥{initialBalanceJpy.toLocaleString()}
+                </p>
               )}
 
               <div className="mt-4 flex flex-col items-center gap-4">

@@ -6,4 +6,5 @@ export const COUNTRY_FLAG_COLORS: Record<string, string> = {
   アメリカ: "#3C3B6E",
   メキシコ: "#006847",
   台湾: "#000095",
+  グアテマラ: "#4997D0",
 };

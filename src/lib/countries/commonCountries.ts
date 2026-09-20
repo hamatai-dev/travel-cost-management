@@ -1,2 +1,2 @@
 // 現金入力・取引編集フォームの国セレクトに出す候補。実際に滞在する国に絞る。
-export const COMMON_COUNTRIES: string[] = ["日本", "アメリカ", "メキシコ", "台湾"];
+export const COMMON_COUNTRIES: string[] = ["日本", "アメリカ", "メキシコ", "台湾", "グアテマラ"];

@@ -200,6 +200,7 @@ function EditTransactionForm({
           <Input
             id="edit-amount"
             type="number"
+            inputMode="decimal"
             step="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}

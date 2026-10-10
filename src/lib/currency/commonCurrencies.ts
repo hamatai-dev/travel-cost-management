@@ -10,4 +10,7 @@ export const COMMON_CURRENCIES: CurrencyOption[] = [
   { code: "MXN", label: "メキシコペソ" },
   { code: "TWD", label: "台湾ドル" },
   { code: "GTQ", label: "グアテマラ・ケツァル" },
+  { code: "NIO", label: "ニカラグア・コルドバ" },
+  { code: "CRC", label: "コスタリカ・コロン" },
+  { code: "COP", label: "コロンビアペソ" },
 ];

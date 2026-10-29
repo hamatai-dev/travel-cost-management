@@ -90,6 +90,13 @@ function CashEntryForm({
     }
   }, [frequentCountries]);
 
+  function applyCurrency(value: string) {
+    setCurrency(value);
+    // 通貨から国が一意に決まる場合は国も連動して選択する(USDなど複数国の通貨は変更しない)
+    const linkedCountry = COMMON_CURRENCIES.find((c) => c.code === value)?.country;
+    if (linkedCountry) setCountry(linkedCountry);
+  }
+
   function applyMerchant(value: string) {
     setMerchant(value);
     // カテゴリを自分でまだ選んでいなければ、店名からルールベースで提案する
@@ -163,7 +170,7 @@ function CashEntryForm({
           <Label htmlFor={`currency-${transactionType}`} className="mb-1.5">
             通貨
           </Label>
-          <Select value={currency} onValueChange={(v) => v && setCurrency(v)}>
+          <Select value={currency} onValueChange={(v) => v && applyCurrency(v)}>
             <SelectTrigger id={`currency-${transactionType}`} className="w-full">
               <SelectValue placeholder="通貨">{(v: string) => v}</SelectValue>
             </SelectTrigger>

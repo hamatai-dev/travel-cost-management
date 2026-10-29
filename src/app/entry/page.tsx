@@ -153,14 +153,17 @@ function CashEntryForm({
           </Label>
           <Input
             id={`amount-${transactionType}`}
-            type="number"
+            // type="number" だと "0." や "1." のような小数点入力途中の文字列が
+            // 不正値として空に正規化され、表示が一瞬消えるため text で扱う
+            type="text"
             inputMode={isMobile ? "none" : "decimal"}
+            pattern="[0-9]*\.?[0-9]*"
             readOnly={isMobile}
             required
-            min="0"
-            step="0.01"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              if (/^[0-9]*\.?[0-9]*$/.test(e.target.value)) setAmount(e.target.value);
+            }}
           />
           {isMobile && (
             <p className="mt-1 text-xs text-muted-foreground">下の電卓で入力してください</p>

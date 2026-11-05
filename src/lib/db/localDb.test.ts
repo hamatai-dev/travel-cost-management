@@ -72,4 +72,38 @@ describe("ローカルDB(IndexedDB)への現金入力の保存と同期状態管
     expect(all).toHaveLength(1);
     expect(all[0].amountOriginal).toBe(600);
   });
+
+  it("Given 日付がばらばらの取引を保存する, When listAllLocalTransactions を呼ぶ, Then 日付の新しい順に返す", async () => {
+    // Given
+    for (const date of ["2026-09-12", "2026-10-31", "2026-10-03"]) {
+      await enqueueCashTransaction(db, buildCashTransaction({ amount: 100, date }));
+    }
+
+    // When
+    const all = await listAllLocalTransactions(db);
+
+    // Then
+    expect(all.map((t) => t.date)).toEqual(["2026-10-31", "2026-10-03", "2026-09-12"]);
+  });
+
+  it("Given 同じ日付の取引を時間差で入力する, When listAllLocalTransactions を呼ぶ, Then 後から入力したものを先に返す", async () => {
+    // Given
+    const date = "2026-10-31";
+    const earlier = buildCashTransaction(
+      { amount: 100, date, merchant: "先の入力" },
+      new Date("2026-10-31T09:00:00.000Z"),
+    );
+    const later = buildCashTransaction(
+      { amount: 200, date, merchant: "後の入力" },
+      new Date("2026-10-31T18:00:00.000Z"),
+    );
+    await enqueueCashTransaction(db, earlier);
+    await enqueueCashTransaction(db, later);
+
+    // When
+    const all = await listAllLocalTransactions(db);
+
+    // Then
+    expect(all.map((t) => t.merchant)).toEqual(["後の入力", "先の入力"]);
+  });
 });

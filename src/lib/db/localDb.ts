@@ -32,7 +32,11 @@ export async function listPendingTransactions(
 export async function listAllLocalTransactions(
   db: LocalDatabase,
 ): Promise<LocalTransaction[]> {
-  return db.transactions.orderBy("clientUuid").reverse().toArray();
+  const transactions = await db.transactions.toArray();
+  return transactions.sort(
+    (a, b) =>
+      b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt),
+  );
 }
 
 export async function markTransactionSynced(
